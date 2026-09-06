@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Kopi Boy — Survey Results</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#0B1220;
+    --panel:#121B30;
+    --panel-border:#22304A;
+    --text:#E8ECF4;
+    --muted:#8B96AC;
+    --riders:#2DD4BF;
+    --riders-soft:rgba(45,212,191,0.14);
+    --cooks:#F5A524;
+    --cooks-soft:rgba(245,165,36,0.14);
+    --accent:#8B5CF6;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Inter',sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,.brand,.count-big{font-family:'Space Grotesk',sans-serif;}
+
+  .topbar{
+    position:sticky; top:0; z-index:10;
+    background:rgba(11,18,32,0.92);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--panel-border);
+    padding:18px 24px;
+    display:flex; align-items:center; justify-content:space-between; gap:16px;
+    flex-wrap:wrap;
+  }
+  .brand{font-size:19px; font-weight:700; letter-spacing:-0.01em;}
+  .brand span{color:var(--muted); font-weight:500; font-size:14px; font-family:'Inter',sans-serif; display:block; margin-top:2px;}
+
+  .controls{display:flex; align-items:center; gap:12px; flex-wrap:wrap;}
+
+  .segmented{
+    display:flex; background:var(--panel); border:1px solid var(--panel-border);
+    border-radius:10px; padding:3px; gap:2px;
+  }
+  .segmented button{
+    border:none; background:transparent; color:var(--muted);
+    font-family:'Inter',sans-serif; font-weight:600; font-size:13.5px;
+    padding:7px 14px; border-radius:8px; cursor:pointer;
+    transition:background .15s, color .15s;
+  }
+  .segmented button.active{background:var(--accent); color:#fff;}
+  .segmented button:hover:not(.active){color:var(--text);}
+
+  #catRiders.active{background:var(--riders); color:#052b26;}
+  #catCooks.active{background:var(--cooks); color:#3a2200;}
+
+  main{max-width:1180px; margin:0 auto; padding:28px 24px 80px;}
+
+  .summary{
+    display:flex; align-items:baseline; gap:10px; margin-bottom:26px;
+  }
+  .count-big{font-size:34px; font-weight:700;}
+  .summary-label{color:var(--muted); font-size:15px;}
+
+  .grid{
+    display:grid; grid-template-columns:repeat(2,1fr); gap:18px;
+  }
+  @media (max-width:820px){ .grid{grid-template-columns:1fr;} }
+
+  .card{
+    background:var(--panel); border:1px solid var(--panel-border);
+    border-radius:14px; padding:20px;
+    display:flex; flex-direction:column; gap:14px;
+  }
+  .card-head{display:flex; justify-content:space-between; align-items:flex-start; gap:10px;}
+  .q-label{font-size:14px; line-height:1.45; font-weight:600; color:var(--text);}
+  .q-index{color:var(--muted); font-weight:500;}
+
+  .mini-toggle{display:flex; flex-shrink:0; gap:2px; background:rgba(255,255,255,0.04); border-radius:7px; padding:2px;}
+  .mini-toggle button{
+    border:none; background:transparent; color:var(--muted); cursor:pointer;
+    font-size:11px; font-weight:600; padding:5px 9px; border-radius:5px;
+    font-family:'Inter',sans-serif;
+  }
+  .mini-toggle button.active{background:var(--panel-border); color:var(--text);}
+
+  .chart-wrap{position:relative; height:200px;}
+  .n-count{font-size:12px; color:var(--muted); text-align:right;}
+
+  .empty-note{color:var(--muted); font-size:13px; text-align:center; padding:40px 0;}
+
+  .text-card{grid-column:1/-1;}
+  .text-list{display:flex; flex-direction:column; gap:10px; max-height:340px; overflow-y:auto; padding-right:4px;}
+  .text-item{
+    background:rgba(255,255,255,0.03); border:1px solid var(--panel-border);
+    border-radius:10px; padding:12px 14px; font-size:13.5px; line-height:1.5; color:var(--text);
+  }
+  .text-item::before{content:"“"; color:var(--muted);}
+  .text-item::after{content:"”"; color:var(--muted);}
+
+  .loading, .error{
+    text-align:center; color:var(--muted); padding:60px 0; font-size:14px;
+  }
+  .error{color:#F87171;}
+
+  .refresh-btn{
+    background:transparent; border:1px solid var(--panel-border); color:var(--muted);
+    border-radius:10px; padding:8px 12px; font-size:13px; font-weight:600; cursor:pointer;
+    font-family:'Inter',sans-serif; display:flex; align-items:center; gap:6px;
+  }
+  .refresh-btn:hover{color:var(--text); border-color:var(--accent);}
+  .refresh-btn.spinning svg{animation:spin 0.8s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">Kopi Boy <span>Survey results — riders & cooks</span></div>
+  <div class="controls">
+    <div class="segmented">
+      <button id="catRiders" class="active">Riders</button>
+      <button id="catCooks">Cooks</button>
+    </div>
+    <div class="segmented">
+      <button id="metricCount" class="active">Count</button>
+      <button id="metricPct">%</button>
+    </div>
+    <button class="refresh-btn" id="refreshBtn">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+      Refresh
+    </button>
+  </div>
+</div>
+
+<main>
+  <div id="content">
+    <div class="loading">Loading responses…</div>
+  </div>
+</main>
+
+<script>
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyVaVguIwy1SQ9M4jGyC3PiAuBSWx-zOPrIj2FMTsY9vYBnNqBcdRV9hq-mLSvoJyPhaQ/exec";
+
+// ---- question metadata (column order matches sheet headers, excluding Timestamp) ----
+const LIKERT_OPTIONS = ["Strongly\nDisagree","Disagree","Neutral","Agree","Strongly\nAgree"];
+
+const SURVEYS = {
+  Riders: {
+    color: "riders",
+    questions: [
+      { key:"q1", label:"Do you currently do delivery or ride-hailing gig work?", type:"single",
+        options:["Yes, currently active","Yes, in the past","No, never"] },
+      { key:"q2", label:"Which platforms do you currently or have you used?", type:"multi",
+        options:["Grab","Foodpanda","Deliveroo","Lalamove","Other","None"] },
+      { key:"q3", label:"On average, how many hours a week do you spend on this work?", type:"single",
+        options:["Less than 5","5–15","15–30","More than 30"] },
+      { key:"q4", label:"Prefers to be paid immediately (cash/PayNow), not a weekly payout.", type:"likert" },
+      { key:"q5", label:"Comfortable being paid directly by the merchant, not an app wallet.", type:"likert" },
+      { key:"q6", label:"Prefers choosing which jobs to accept, over auto-assignment.", type:"likert" },
+      { key:"q7", label:"A rating/tier system makes effort feel unfairly rewarded.", type:"likert" },
+      { key:"q8", label:"Interested in casual, no-fixed-schedule work.", type:"likert" },
+      { key:"q9", label:"A fair delivery fee matters more than priority tier access.", type:"likert" },
+      { key:"q10", label:"Biggest frustration with delivery gig work today", type:"text" },
+      { key:"q11", label:"Open to a future opportunity that addressed this?", type:"single",
+        options:["Yes","Maybe","No"] },
+    ]
+  },
+  Merchants: {
+    color: "cooks",
+    questions: [
+      { key:"q1", label:"Do you currently sell food from home, a stall, or a small shop?", type:"single",
+        options:["Yes, currently","Yes, in the past","No, but considering it","No"] },
+      { key:"q2", label:"Have you sold food through a delivery platform before?", type:"single",
+        options:["Yes, currently","Yes, in the past","No, never"] },
+      { key:"q3", label:"Commission fees are a major cost eating into profit.", type:"likert" },
+      { key:"q4", label:"Prefers a flat monthly subscription over % commission per order.", type:"likert" },
+      { key:"q5", label:"$20–25/month for zero commission would feel fair.", type:"likert" },
+      { key:"q6", label:"Comfortable choosing their own delivery helper per order.", type:"likert" },
+      { key:"q7", label:"Setting their own refund policy would give more confidence.", type:"likert" },
+      { key:"q8", label:"Reaching customers is harder than the cost of commission.", type:"likert" },
+      { key:"q9", label:"#1 thing that would help them sell more food right now", type:"text" },
+      { key:"q10", label:"Open to a future opportunity that addressed this?", type:"single",
+        options:["Yes","Maybe","No"] },
+    ]
+  }
+};
+
+let RAW = null;               // fetched { Riders:{headers,rows}, Merchants:{headers,rows} }
+let currentCategory = "Riders";
+let currentMetric = "count";  // "count" | "pct"
+const chartTypeByKey = {};    // "Riders.q1" -> "bar" | "pie"
+const chartInstances = {};    // canvas id -> Chart instance
+
+const palette = ["#8B5CF6","#2DD4BF","#F5A524","#60A5FA","#F87171","#34D399"];
+
+async function loadData(){
+  const contentEl = document.getElementById("content");
+  contentEl.innerHTML = '<div class="loading">Loading responses…</div>';
+  try{
+    const res = await fetch(SCRIPT_URL + "?t=" + Date.now(), { method:"GET", cache:"no-store" });
+    const json = await res.json();
+    if (json.result === "error") throw new Error(json.message || "Unknown error");
+    RAW = json;
+    render();
+  }catch(err){
+    contentEl.innerHTML = '<div class="error">Couldn\'t load survey data. ' + (err.message || "") + '<br>Check the SCRIPT_URL and that the Apps Script has a doGet function deployed.</div>';
+  }
+}
+
+function computeCounts(question, colIndex, rows){
+  const counts = {};
+  let respondents = 0;
+  if (question.type === "single"){
+    question.options.forEach(o => counts[o] = 0);
+    rows.forEach(r => {
+      const v = (r[colIndex] || "").toString().trim();
+      if (!v) return;
+      respondents++;
+      counts[v] = (counts[v] || 0) + 1;
+    });
+  } else if (question.type === "multi"){
+    question.options.forEach(o => counts[o] = 0);
+    rows.forEach(r => {
+      const v = (r[colIndex] || "").toString().trim();
+      if (!v) return;
+      respondents++;
+      v.split(",").map(s => s.trim()).filter(Boolean).forEach(opt => {
+        if (counts[opt] === undefined) counts[opt] = 0;
+        counts[opt]++;
+      });
+    });
+  } else if (question.type === "likert"){
+    LIKERT_OPTIONS.forEach((_, i) => counts[i+1] = 0);
+    rows.forEach(r => {
+      const v = parseInt(r[colIndex], 10);
+      if (!v || v < 1 || v > 5) return;
+      respondents++;
+      counts[v]++;
+    });
+  }
+  return { counts, respondents };
+}
+
+function buildChartData(question, counts, respondents){
+  let labels, values;
+  if (question.type === "likert"){
+    labels = LIKERT_OPTIONS;
+    values = [1,2,3,4,5].map(n => counts[n] || 0);
+  } else {
+    labels = question.options;
+    values = labels.map(l => counts[l] || 0);
+  }
+  if (currentMetric === "pct" && respondents > 0){
+    values = values.map(v => Math.round((v / respondents) * 1000) / 10);
+  }
+  return { labels, values };
+}
+
+function renderQuestionCard(surveyKey, question, colIndex, rows, accentVar){
+  if (question.type === "text"){
+    const texts = rows.map(r => (r[colIndex] || "").toString().trim()).filter(Boolean);
+    let listHtml = texts.length
+      ? texts.map(t => '<div class="text-item">' + escapeHtml(t) + '</div>').join("")
+      : '<div class="empty-note">No open responses yet.</div>';
+    return '<div class="card text-card">' +
+      '<div class="card-head"><div class="q-label">' + escapeHtml(question.label) + '</div></div>' +
+      '<div class="text-list">' + listHtml + '</div></div>';
+  }
+
+  const chartKey = surveyKey + "." + question.key;
+  const chartType = chartTypeByKey[chartKey] || "bar";
+  const canvasId = "chart-" + chartKey;
+
+  return '<div class="card">' +
+    '<div class="card-head">' +
+      '<div class="q-label">' + escapeHtml(question.label) + '</div>' +
+      '<div class="mini-toggle">' +
+        '<button data-key="' + chartKey + '" data-type="bar" class="chart-type-btn ' + (chartType==="bar"?"active":"") + '">Bar</button>' +
+        '<button data-key="' + chartKey + '" data-type="pie" class="chart-type-btn ' + (chartType==="pie"?"active":"") + '">Pie</button>' +
+      '</div>' +
+    '</div>' +
+    '<div class="chart-wrap"><canvas id="' + canvasId + '"></canvas></div>' +
+    '<div class="n-count" id="n-' + chartKey + '"></div>' +
+  '</div>';
+}
+
+function escapeHtml(str){
+  const d = document.createElement("div");
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+function drawChart(surveyKey, question, colIndex, rows, accentColor){
+  const chartKey = surveyKey + "." + question.key;
+  const canvas = document.getElementById("chart-" + chartKey);
+  if (!canvas) return;
+
+  const { counts, respondents } = computeCounts(question, colIndex, rows);
+  const { labels, values } = buildChartData(question, counts, respondents);
+  const chartType = chartTypeByKey[chartKey] || "bar";
+
+  document.getElementById("n-" + chartKey).textContent =
+    respondents + (respondents === 1 ? " response" : " responses");
+
+  if (chartInstances[chartKey]) chartInstances[chartKey].destroy();
+
+  const isPie = chartType === "pie";
+  const colors = isPie ? labels.map((_, i) => palette[i % palette.length])
+                        : labels.map(() => accentColor);
+
+  chartInstances[chartKey] = new Chart(canvas.getContext("2d"), {
+    type: isPie ? "pie" : "bar",
+    data: {
+      labels: labels,
+      datasets: [{
+        data: values,
+        backgroundColor: colors,
+        borderRadius: isPie ? 0 : 6,
+        borderColor: isPie ? "#0B1220" : "transparent",
+        borderWidth: isPie ? 2 : 0,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      indexAxis: (!isPie && question.type !== "likert" && labels.some(l => l.length > 12)) ? "y" : "x",
+      plugins: {
+        legend: { display: isPie, position: "right",
+          labels: { color: "#8B96AC", font:{ family:"Inter", size:11 }, boxWidth:10, padding:8 } },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => currentMetric === "pct" ? ctx.parsed.y ?? ctx.parsed + "%" : ctx.parsed.y ?? ctx.parsed
+          }
+        }
+      },
+      scales: isPie ? {} : {
+        x: { ticks:{ color:"#8B96AC", font:{ family:"Inter", size:11 } }, grid:{ color:"#22304A" } },
+        y: { beginAtZero:true, ticks:{ color:"#8B96AC", font:{ family:"Inter", size:11 },
+             callback: v => currentMetric === "pct" ? v + "%" : v }, grid:{ color:"#22304A" } }
+      }
+    }
+  });
+}
+
+function render(){
+  const contentEl = document.getElementById("content");
+  if (!RAW){ return; }
+
+  const survey = SURVEYS[currentCategory];
+  const sheetData = RAW[currentCategory] || { headers:[], rows:[] };
+  const rows = sheetData.rows || [];
+  const accentColor = survey.color === "riders" ? "#2DD4BF" : "#F5A524";
+
+  const summaryHtml = '<div class="summary">' +
+    '<div class="count-big" style="color:' + accentColor + '">' + rows.length + '</div>' +
+    '<div class="summary-label">' + currentCategory.toLowerCase() + ' responses so far</div>' +
+  '</div>';
+
+  if (rows.length === 0){
+    contentEl.innerHTML = summaryHtml + '<div class="empty-note">No ' + currentCategory.toLowerCase() + ' responses yet — check back once the campaign is live.</div>';
+    return;
+  }
+
+  const cardsHtml = survey.questions.map((q, i) => {
+    const colIndex = i + 1; // +1 to skip Timestamp column
+    return renderQuestionCard(currentCategory, q, colIndex, rows, accentColor);
+  }).join("");
+
+  contentEl.innerHTML = summaryHtml + '<div class="grid">' + cardsHtml + '</div>';
+
+  survey.questions.forEach((q, i) => {
+    if (q.type === "text") return;
+    drawChart(currentCategory, q, i + 1, rows, accentColor);
+  });
+
+  document.querySelectorAll(".chart-type-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const key = btn.dataset.key;
+      chartTypeByKey[key] = btn.dataset.type;
+      render();
+    });
+  });
+}
+
+document.getElementById("catRiders").addEventListener("click", () => {
+  currentCategory = "Riders";
+  document.getElementById("catRiders").classList.add("active");
+  document.getElementById("catCooks").classList.remove("active");
+  render();
+});
+document.getElementById("catCooks").addEventListener("click", () => {
+  currentCategory = "Merchants";
+  document.getElementById("catCooks").classList.add("active");
+  document.getElementById("catRiders").classList.remove("active");
+  render();
+});
+document.getElementById("metricCount").addEventListener("click", () => {
+  currentMetric = "count";
+  document.getElementById("metricCount").classList.add("active");
+  document.getElementById("metricPct").classList.remove("active");
+  render();
+});
+document.getElementById("metricPct").addEventListener("click", () => {
+  currentMetric = "pct";
+  document.getElementById("metricPct").classList.add("active");
+  document.getElementById("metricCount").classList.remove("active");
+  render();
+});
+document.getElementById("refreshBtn").addEventListener("click", (e) => {
+  e.currentTarget.classList.add("spinning");
+  loadData().finally(() => e.currentTarget.classList.remove("spinning"));
+});
+
+loadData();
+</script>
+
+</body>
+</html>
