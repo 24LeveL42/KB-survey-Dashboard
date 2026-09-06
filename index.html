@@ -355,7 +355,7 @@ function render(){
 
   const survey = SURVEYS[currentCategory];
   const sheetData = RAW[currentCategory] || { headers:[], rows:[] };
-  const rows = (sheetData.rows || []).filter(r => r.some(v => (v || "").toString().trim() !== ""));
+  const rows = (sheetData.rows || []).filter(r => r.slice(1).some(v => (v || "").toString().trim() !== ""));
   const accentColor = survey.color === "riders" ? "#2DD4BF" : "#F5A524";
 
   const summaryHtml = '<div class="summary">' +
